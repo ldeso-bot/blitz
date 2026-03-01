@@ -7,7 +7,6 @@ import android.content.res.Configuration.ORIENTATION_LANDSCAPE
 import android.content.res.Configuration.ORIENTATION_PORTRAIT
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.Modifier
@@ -17,6 +16,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.LayoutDirection
@@ -50,9 +50,10 @@ fun Modifier.clockInput(
     restore: (addMinutes: Float, addSeconds: Float) -> Unit,
 ): Modifier = pointerInput(Unit) {
     awaitEachGesture {
-        awaitFirstDown(requireUnconsumed = false)
+        val down = awaitPointerEvent(PointerEventPass.Initial).changes.first()
         if (!isBusyProvider() && clockStateProvider() == ClockState.TICKING) {
             play()
+            down.consume()
         }
     }
 }
@@ -61,6 +62,7 @@ fun Modifier.clockInput(
             clockState = clockStateProvider(),
             isBusy = isBusyProvider(),
             start = start,
+            play = play,
         )
     }
     .onKeyEvent {
@@ -115,19 +117,21 @@ fun Modifier.clockInput(
     }
 
 /**
- * Start the clock on click events.
+ * Start the clock or switch to the next player on click events.
  *
  * @param[clockState] Current state of the clock.
  * @param[isBusy] Whether the clock is currently busy.
  * @param[start] Callback called to start the clock.
+ * @param[play] Callback called to switch to the next player.
  */
 private fun onClickEvent(
-    clockState: ClockState, isBusy: Boolean, start: () -> Unit,
+    clockState: ClockState, isBusy: Boolean, start: () -> Unit, play: () -> Unit,
 ) {
     if (!isBusy) {
         when (clockState) {
             ClockState.PAUSED, ClockState.SOFT_RESET, ClockState.FULL_RESET -> start()
-            ClockState.TICKING, ClockState.FINISHED -> Unit
+            ClockState.TICKING -> play()
+            ClockState.FINISHED -> Unit
         }
     }
 }
