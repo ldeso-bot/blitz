@@ -44,6 +44,9 @@ class ClockViewModel(
     private var increment: Duration = defaultIncrement
     private var endMark: ComparableTimeMark = timeSource.markNow()
     private var tickingJob: Job? = null
+    private var isPlayUndoable: Boolean = false
+    private var savedEndMark: ComparableTimeMark = endMark
+    private var savedPlayerState: PlayerState = PlayerState.WHITE
 
     private val _whiteTime: MutableStateFlow<Duration> = MutableStateFlow(duration + increment)
     private val _blackTime: MutableStateFlow<Duration> = MutableStateFlow(duration + increment)
@@ -127,6 +130,9 @@ class ClockViewModel(
 
     fun play() {
         tickingJob?.cancel()
+        savedEndMark = endMark
+        savedPlayerState = _playerState.value
+        isPlayUndoable = true
         val playMark = timeSource.markNow()
         val remainingTime = endMark - playMark
         currentTime = (remainingTime + increment).coerceAtMost(35_999.seconds)
@@ -138,6 +144,17 @@ class ClockViewModel(
         }
         endMark = playMark + currentTime
         tickingJob = viewModelScope.launch { tickUntilFinished() }
+    }
+
+    fun undoPlay() {
+        if (isPlayUndoable) {
+            tickingJob?.cancel()
+            isPlayUndoable = false
+            _playerState.value = savedPlayerState
+            endMark = savedEndMark
+            currentTime = endMark - timeSource.markNow()
+            tickingJob = viewModelScope.launch { tickUntilFinished() }
+        }
     }
 
     fun pause() {

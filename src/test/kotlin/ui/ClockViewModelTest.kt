@@ -305,6 +305,112 @@ class ClockViewModelTest {
     }
 
     @Test
+    fun `start-delay-play-undoPlay, playerState is WHITE`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.play()
+        clockViewModel.undoPlay()
+
+        assertEquals(PlayerState.WHITE, clockViewModel.playerState.value)
+    }
+
+    @Test
+    fun `start-delay-play-undoPlay, clockState is TICKING`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.play()
+        clockViewModel.undoPlay()
+
+        assertEquals(ClockState.TICKING, clockViewModel.clockState.value)
+    }
+
+    @Test
+    fun `start-delay-play-undoPlay, whiteTime is set to exact current value`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.play()
+        clockViewModel.undoPlay()
+
+        assertEquals(initialTime - delayTime, clockViewModel.whiteTime.value)
+    }
+
+    @Test
+    fun `start-delay-play-undoPlay, blackTime does not change`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.play()
+        clockViewModel.undoPlay()
+
+        assertEquals(initialTime, clockViewModel.blackTime.value)
+    }
+
+    @Test
+    fun `start-delay-play-undoPlay-delay, whiteTime continues decreasing`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.play()
+        clockViewModel.undoPlay()
+        delay(delayTime)
+
+        val expectedTime = tickPeriod * (((initialTime - 2 * delayTime) / tickPeriod).toInt() + 1)
+
+        assertEquals(expectedTime, clockViewModel.whiteTime.value)
+    }
+
+    @Test
+    fun `start-delay-undoPlay, playerState is still WHITE`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.undoPlay()
+
+        assertEquals(PlayerState.WHITE, clockViewModel.playerState.value)
+    }
+
+    @Test
+    fun `start-delay-undoPlay, whiteTime is unchanged`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        val expectedTime = clockViewModel.whiteTime.value
+        clockViewModel.undoPlay()
+
+        assertEquals(expectedTime, clockViewModel.whiteTime.value)
+    }
+
+    @Test
+    fun `start-delay-play-delay-undoPlay, whiteTime is set to exact current value`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.play()
+        delay(delayTime)
+        clockViewModel.undoPlay()
+
+        assertEquals(initialTime - 2 * delayTime, clockViewModel.whiteTime.value)
+    }
+
+    @Test
+    fun `start-delay-play-undoPlay-play-undoPlay, playerState is WHITE`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.play()
+        clockViewModel.undoPlay()
+        clockViewModel.play()
+        clockViewModel.undoPlay()
+
+        assertEquals(PlayerState.WHITE, clockViewModel.playerState.value)
+    }
+
+    @Test
+    fun `start-delay-play-play-undoPlay, playerState is WHITE`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.play()
+        clockViewModel.play()
+        clockViewModel.undoPlay()
+
+        assertEquals(PlayerState.WHITE, clockViewModel.playerState.value)
+    }
+
+    @Test
     fun `start-wait, clockState is FINISHED`() = runTest {
         clockViewModel.start()
         delay(initialTime + 1.milliseconds)
