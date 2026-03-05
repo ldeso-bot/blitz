@@ -16,7 +16,6 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.LayoutDirection
@@ -48,22 +47,24 @@ fun Modifier.clockInput(
     play: () -> Unit,
     save: () -> Unit,
     restore: (addMinutes: Float, addSeconds: Float) -> Unit,
-): Modifier = pointerInput(Unit) {
-    awaitEachGesture {
-        val down = awaitPointerEvent(PointerEventPass.Initial).changes.first()
-        if (!isBusyProvider() && clockStateProvider() == ClockState.TICKING) {
-            play()
-            down.consume()
-        }
-    }
+): Modifier = clickable(interactionSource = null, indication = null) {
+    onClickEvent(
+        clockState = clockStateProvider(),
+        isBusy = isBusyProvider(),
+        start = start,
+        play = play,
+    )
 }
-    .clickable(interactionSource = null, indication = null) {
-        onClickEvent(
-            clockState = clockStateProvider(),
-            isBusy = isBusyProvider(),
-            start = start,
-            play = play,
-        )
+    .pointerInput(Unit) {
+        awaitEachGesture {
+            val down = awaitPointerEvent().changes.first()
+            onPressEvent(
+                down = down,
+                clockState = clockStateProvider(),
+                isBusy = isBusyProvider(),
+                play = play,
+            )
+        }
     }
     .onKeyEvent {
         onKeyEvent(
@@ -115,6 +116,23 @@ fun Modifier.clockInput(
             },
         )
     }
+
+/**
+ * Switch to the next player if the clock is ticking on press events.
+ *
+ * @param[down] The pointer input change for the press event.
+ * @param[clockState] Current state of the clock.
+ * @param[isBusy] Whether the clock is currently busy.
+ * @param[play] Callback called to switch to the next player.
+ */
+private fun onPressEvent(
+    down: PointerInputChange, clockState: ClockState, isBusy: Boolean, play: () -> Unit,
+) {
+    if (!isBusy && clockState == ClockState.TICKING) {
+        play()
+        down.consume()
+    }
+}
 
 /**
  * Start the clock or switch to the next player on click events.

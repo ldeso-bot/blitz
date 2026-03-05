@@ -140,6 +140,21 @@ class ClockViewModel(
         tickingJob = viewModelScope.launch { tickUntilFinished() }
     }
 
+    fun revertPlay() {
+        tickingJob?.cancel()
+        val revertMark = timeSource.markNow()
+        currentTime = endMark - revertMark
+        _playerState.update {
+            when (it) {
+                PlayerState.WHITE -> PlayerState.BLACK
+                PlayerState.BLACK -> PlayerState.WHITE
+            }
+        }
+        currentTime -= increment
+        endMark = revertMark + currentTime
+        tickingJob = viewModelScope.launch { tickUntilFinished() }
+    }
+
     fun pause() {
         tickingJob?.cancel()
         currentTime = endMark - timeSource.markNow()
