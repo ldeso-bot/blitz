@@ -99,6 +99,7 @@ fun ClockScreen(
         onBackStart = {
             backEventAction = if (clockState == ClockState.TICKING) {
                 clockViewModel.undoPlay()
+                clockViewModel.save()
                 BackAction.PAUSE
             } else {
                 BackAction.RESET

@@ -164,7 +164,6 @@ class ClockViewModel(
             currentTime = endMark - timeSource.markNow()
             tickingJob = viewModelScope.launch { tickUntilFinished() }
         }
-        save()
     }
 
     fun pause() {
