@@ -388,6 +388,17 @@ class ClockViewModelTest {
     }
 
     @Test
+    fun `start-delay-play-delay-undoPlay, blackTime does not change`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.play()
+        delay(delayTime)
+        clockViewModel.undoPlay()
+
+        assertEquals(initialTime, clockViewModel.blackTime.value)
+    }
+
+    @Test
     fun `start-delay-play-undoPlay-play-undoPlay, playerState is WHITE`() = runTest {
         clockViewModel.start()
         delay(delayTime)

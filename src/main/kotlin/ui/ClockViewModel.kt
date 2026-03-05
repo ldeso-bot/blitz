@@ -47,6 +47,8 @@ class ClockViewModel(
     private var isPlayUndoable: Boolean = false
     private var savedEndMark: ComparableTimeMark = endMark
     private var savedPlayerState: PlayerState = PlayerState.WHITE
+    private var savedWhiteTime: Duration = duration + increment
+    private var savedBlackTime: Duration = duration + increment
 
     private val _whiteTime: MutableStateFlow<Duration> = MutableStateFlow(duration + increment)
     private val _blackTime: MutableStateFlow<Duration> = MutableStateFlow(duration + increment)
@@ -132,6 +134,8 @@ class ClockViewModel(
         tickingJob?.cancel()
         savedEndMark = endMark
         savedPlayerState = _playerState.value
+        savedWhiteTime = _whiteTime.value
+        savedBlackTime = _blackTime.value
         isPlayUndoable = true
         val playMark = timeSource.markNow()
         val remainingTime = endMark - playMark
@@ -150,6 +154,8 @@ class ClockViewModel(
         if (isPlayUndoable) {
             tickingJob?.cancel()
             isPlayUndoable = false
+            _whiteTime.value = savedWhiteTime
+            _blackTime.value = savedBlackTime
             _playerState.value = savedPlayerState
             endMark = savedEndMark
             currentTime = endMark - timeSource.markNow()
