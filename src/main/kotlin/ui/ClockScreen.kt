@@ -98,8 +98,6 @@ fun ClockScreen(
         enabledProvider = { clockState != ClockState.FULL_RESET },
         onBackStart = {
             backEventAction = if (clockState == ClockState.TICKING) {
-                clockViewModel.revertPlay()
-                clockViewModel.save()
                 BackAction.PAUSE
             } else {
                 BackAction.RESET
@@ -108,11 +106,16 @@ fun ClockScreen(
         onCompletion = {
             when (backEventAction) {
                 BackAction.PAUSE -> run {
+                    clockViewModel.revertPlay()
                     clockViewModel.pause()
-                    clockViewModel.restore(isDecimalRestored = true)
                 }
 
                 BackAction.RESET -> clockViewModel.reset()
+            }
+        },
+        onCancellation = {
+            if (backEventAction == BackAction.PAUSE) {
+                clockViewModel.revertPlay()
             }
         },
         updateSwipeEdge = { backEventSwipeEdge = it },
