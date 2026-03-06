@@ -116,6 +116,16 @@ fun ClockScreen(
                 BackAction.RESET -> clockViewModel.reset()
             }
         },
+        onCancellation = {
+            when (backEventAction) {
+                BackAction.PAUSE -> run {
+                    clockViewModel.undoPlay()
+                    clockViewModel.play()
+                }
+
+                BackAction.RESET -> Unit
+            }
+        },
         updateSwipeEdge = { backEventSwipeEdge = it },
         updateProgress = { backEventProgress = it },
     )

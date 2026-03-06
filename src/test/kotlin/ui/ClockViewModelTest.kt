@@ -422,6 +422,41 @@ class ClockViewModelTest {
     }
 
     @Test
+    fun `start-delay-play-undoPlay-play, playerState is BLACK`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.play()
+        clockViewModel.undoPlay()
+        clockViewModel.play()
+
+        assertEquals(PlayerState.BLACK, clockViewModel.playerState.value)
+    }
+
+    @Test
+    fun `start-delay-play-delay-undoPlay-play, blackTime does not change`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.play()
+        delay(delayTime)
+        clockViewModel.undoPlay()
+        clockViewModel.play()
+
+        assertEquals(initialTime, clockViewModel.blackTime.value)
+    }
+
+    @Test
+    fun `start-delay-play-delay-undoPlay-play, whiteTime reflects continuous ticking`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.play()
+        delay(delayTime)
+        clockViewModel.undoPlay()
+        clockViewModel.play()
+
+        assertEquals(initialTime - 2 * delayTime + increment, clockViewModel.whiteTime.value)
+    }
+
+    @Test
     fun `start-wait, clockState is FINISHED`() = runTest {
         clockViewModel.start()
         delay(initialTime + 1.milliseconds)
