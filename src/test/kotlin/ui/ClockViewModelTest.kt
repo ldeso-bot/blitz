@@ -375,4 +375,121 @@ class ClockViewModelTest {
 
         assertEquals(Duration.ZERO, clockViewModel.whiteTime.value)
     }
+
+    @Test
+    fun `start-delay-play-delay, blackTime is set to the next multiple of tickPeriod`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.play()
+        delay(delayTime)
+
+        val expectedTime = tickPeriod * (((initialTime - delayTime) / tickPeriod).toInt() + 1)
+
+        assertEquals(expectedTime, clockViewModel.blackTime.value)
+    }
+
+    @Test
+    fun `start-play-wait, clockState is FINISHED`() = runTest {
+        clockViewModel.start()
+        clockViewModel.play()
+        delay(initialTime + 1.milliseconds)
+
+        assertEquals(ClockState.FINISHED, clockViewModel.clockState.value)
+    }
+
+    @Test
+    fun `start-play-wait, blackTime is zero`() = runTest {
+        clockViewModel.start()
+        clockViewModel.play()
+        delay(initialTime + 1.milliseconds)
+
+        assertEquals(Duration.ZERO, clockViewModel.blackTime.value)
+    }
+
+    @Test
+    fun `start-delay-pause-save-restore with zero seconds component, whiteTime is set correctly`() =
+        runTest {
+            clockViewModel.start()
+            delay(increment)
+            clockViewModel.pause()
+            clockViewModel.save()
+            clockViewModel.restore(addMinutes = 1F)
+
+            assertEquals(6.minutes, clockViewModel.whiteTime.value)
+        }
+
+    @Test
+    fun `save-restore with zero increment, durationMinutes is coerced to minimum 1`() = runTest {
+        clockViewModel.save()
+        clockViewModel.restore(addSeconds = -increment.inWholeSeconds.toFloat())
+        clockViewModel.save()
+        clockViewModel.restore(addMinutes = -duration.inWholeMinutes.toFloat())
+
+        assertEquals(1.minutes, clockViewModel.whiteTime.value)
+        assertEquals(1.minutes, clockViewModel.blackTime.value)
+    }
+
+    @Test
+    fun `save-restore with zero duration, incrementSeconds is coerced to minimum 1`() = runTest {
+        clockViewModel.save()
+        clockViewModel.restore(addMinutes = -duration.inWholeMinutes.toFloat())
+        clockViewModel.save()
+        clockViewModel.restore(addSeconds = -increment.inWholeSeconds.toFloat())
+
+        assertEquals(1.seconds, clockViewModel.whiteTime.value)
+        assertEquals(1.seconds, clockViewModel.blackTime.value)
+    }
+
+    @Test
+    fun `start-delay-pause-save-restore with negative time change, whiteTime decreases`() =
+        runTest {
+            clockViewModel.start()
+            delay(delayTime)
+            clockViewModel.pause()
+            clockViewModel.save()
+            clockViewModel.restore(addMinutes = -1F)
+
+            val expectedTime =
+                (initialTime - delayTime).toComponents { minutes, seconds, nanoseconds ->
+                    val newMinutes = minutes.toFloat() - 1F
+                    val newSeconds =
+                        seconds.toFloat() + nanoseconds.toFloat() / 1_000_000_000F
+                    newMinutes.roundToInt().minutes + newSeconds.roundToInt().seconds
+                }
+
+            assertEquals(expectedTime, clockViewModel.whiteTime.value)
+        }
+
+    @Test
+    fun `start-delay-pause-save-restore with rejected update, whiteTime does not change`() =
+        runTest {
+            clockViewModel.start()
+            delay(delayTime)
+            clockViewModel.pause()
+            val expectedTime = clockViewModel.whiteTime.value
+            clockViewModel.save()
+            clockViewModel.restore(addMinutes = -0.4F)
+
+            assertEquals(expectedTime, clockViewModel.whiteTime.value)
+        }
+
+    @Test
+    fun `start-delay-pause-save-restore with no args, whiteTime is set to rounded value`() =
+        runTest {
+            clockViewModel.start()
+            delay(delayTime)
+            clockViewModel.pause()
+            clockViewModel.save()
+            clockViewModel.restore()
+
+            val expectedTime =
+                (initialTime - delayTime).toComponents { minutes, seconds, nanoseconds ->
+                    val newMinutes = minutes.toFloat()
+                    val newSeconds =
+                        seconds.toFloat() + nanoseconds.toFloat() / 1_000_000_000F
+                    newMinutes.roundToInt().minutes + newSeconds.roundToInt().seconds
+                }
+
+            assertEquals(expectedTime, clockViewModel.whiteTime.value)
+        }
 }
