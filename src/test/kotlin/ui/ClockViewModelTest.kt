@@ -375,4 +375,256 @@ class ClockViewModelTest {
 
         assertEquals(Duration.ZERO, clockViewModel.whiteTime.value)
     }
+
+    @Test
+    fun `start-delay-play-wait, clockState is FINISHED and blackTime is zero`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.play()
+        delay(initialTime + 1.milliseconds)
+
+        assertEquals(ClockState.FINISHED, clockViewModel.clockState.value)
+        assertEquals(Duration.ZERO, clockViewModel.blackTime.value)
+    }
+
+    @Test
+    fun `start-delay-play-delay-pause, blackTime is set to exact current value`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.play()
+        delay(delayTime)
+        clockViewModel.pause()
+
+        assertEquals(initialTime - delayTime, clockViewModel.blackTime.value)
+    }
+
+    @Test
+    fun `start-delay-play-delay-pause-save-restore, blackTime is set correctly`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.play()
+        delay(delayTime)
+        clockViewModel.pause()
+        clockViewModel.save()
+        clockViewModel.restore(addMinutes = addMinutes, addSeconds = addSeconds)
+
+        val expectedTime = (initialTime - delayTime).toComponents { minutes, seconds, nanoseconds ->
+            val newMinutes = minutes.toFloat() + addMinutes
+            val newSeconds = seconds.toFloat() + nanoseconds.toFloat() / 1_000_000_000F + addSeconds
+            newMinutes.roundToInt().minutes + newSeconds.roundToInt().seconds
+        }
+
+        assertEquals(expectedTime, clockViewModel.blackTime.value)
+    }
+
+    @Test
+    fun `start-delay-play-delay-pause-save-restore, whiteTime does not change`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.play()
+        delay(delayTime)
+        clockViewModel.pause()
+        clockViewModel.save()
+        clockViewModel.restore(addMinutes = addMinutes, addSeconds = addSeconds)
+
+        assertEquals(initialTime - delayTime + increment, clockViewModel.whiteTime.value)
+    }
+
+    @Test
+    fun `start-delay-pause-save-restore with invalid negative update is rejected`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.pause()
+        val whiteTimeBeforeRestore = clockViewModel.whiteTime.value
+        clockViewModel.save()
+        // addMinutes positive but actual time change is negative due to large negative seconds
+        clockViewModel.restore(addMinutes = 1F, addSeconds = -120F)
+
+        assertEquals(whiteTimeBeforeRestore, clockViewModel.whiteTime.value)
+    }
+
+    @Test
+    fun `start-delay-pause-save-restore with only addMinutes`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.pause()
+        clockViewModel.save()
+        clockViewModel.restore(addMinutes = 1F)
+
+        val expectedTime = (initialTime - delayTime).toComponents { minutes, seconds, nanoseconds ->
+            val newMinutes = minutes.toFloat() + 1F
+            val newSeconds = seconds.toFloat() + nanoseconds.toFloat() / 1_000_000_000F
+            newMinutes.roundToInt().minutes + newSeconds.roundToInt().seconds
+        }
+
+        assertEquals(expectedTime, clockViewModel.whiteTime.value)
+    }
+
+    @Test
+    fun `start-delay-pause-save-restore with only addSeconds`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.pause()
+        clockViewModel.save()
+        clockViewModel.restore(addSeconds = 5F)
+
+        val expectedTime = (initialTime - delayTime).toComponents { minutes, seconds, nanoseconds ->
+            val newMinutes = minutes.toFloat()
+            val newSeconds = seconds.toFloat() + nanoseconds.toFloat() / 1_000_000_000F + 5F
+            newMinutes.roundToInt().minutes + newSeconds.roundToInt().seconds
+        }
+
+        assertEquals(expectedTime, clockViewModel.whiteTime.value)
+    }
+
+    @Test
+    fun `save-restore with zero increment, savedDurationMinutes minimum is 1`() = runTest {
+        val vm = ClockViewModel(
+            durationMinutes = 5,
+            incrementSeconds = 0,
+            tickPeriodMillis = tickPeriod.inWholeMilliseconds.toInt(),
+            timeSource = scheduler.timeSource,
+        )
+        vm.save()
+        vm.restore(addMinutes = -10F)
+
+        assertEquals(1.minutes, vm.whiteTime.value)
+        assertEquals(1.minutes, vm.blackTime.value)
+    }
+
+    @Test
+    fun `save-restore with zero duration, savedIncrementSeconds minimum is 1`() = runTest {
+        val vm = ClockViewModel(
+            durationMinutes = 0,
+            incrementSeconds = 5,
+            tickPeriodMillis = tickPeriod.inWholeMilliseconds.toInt(),
+            timeSource = scheduler.timeSource,
+        )
+        vm.save()
+        vm.restore(addSeconds = -10F)
+
+        assertEquals(1.seconds, vm.whiteTime.value)
+        assertEquals(1.seconds, vm.blackTime.value)
+    }
+
+    @Test
+    fun `play with large increment coerces time to 35999 seconds`() = runTest {
+        val vm = ClockViewModel(
+            durationMinutes = 599,
+            incrementSeconds = 30,
+            tickPeriodMillis = tickPeriod.inWholeMilliseconds.toInt(),
+            timeSource = scheduler.timeSource,
+        )
+        vm.start()
+        delay(1.milliseconds)
+        vm.play()
+
+        val maxTime = 35_999.seconds
+
+        assertEquals(maxTime, vm.blackTime.value)
+    }
+
+    @Test
+    fun `start-delay-pause-save-restore with negative addMinutes`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.pause()
+        clockViewModel.save()
+        clockViewModel.restore(addMinutes = -1F)
+
+        val expectedTime = (initialTime - delayTime).toComponents { minutes, seconds, nanoseconds ->
+            val newMinutes = minutes.toFloat() - 1F
+            val newSeconds = seconds.toFloat() + nanoseconds.toFloat() / 1_000_000_000F
+            newMinutes.roundToInt().minutes + newSeconds.roundToInt().seconds
+        }
+
+        assertEquals(expectedTime, clockViewModel.whiteTime.value)
+    }
+
+    @Test
+    fun `start-delay-pause-save-restore with negative addSeconds`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.pause()
+        clockViewModel.save()
+        clockViewModel.restore(addSeconds = -1F)
+
+        val expectedTime = (initialTime - delayTime).toComponents { minutes, seconds, nanoseconds ->
+            val newMinutes = minutes.toFloat()
+            val newSeconds = seconds.toFloat() + nanoseconds.toFloat() / 1_000_000_000F - 1F
+            newMinutes.roundToInt().minutes + newSeconds.roundToInt().seconds
+        }
+
+        assertEquals(expectedTime, clockViewModel.whiteTime.value)
+    }
+
+    @Test
+    fun `save-restore back to default config from SOFT_RESET yields FULL_RESET`() = runTest {
+        clockViewModel.save()
+        clockViewModel.restore(addMinutes = 1F)
+        assertEquals(ClockState.SOFT_RESET, clockViewModel.clockState.value)
+
+        clockViewModel.save()
+        clockViewModel.restore(addMinutes = -1F)
+        assertEquals(ClockState.FULL_RESET, clockViewModel.clockState.value)
+    }
+
+    @Test
+    fun `start-delay-play-delay-pause-save-restore with isDecimalRestored`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.play()
+        delay(delayTime)
+        clockViewModel.pause()
+        clockViewModel.save()
+        clockViewModel.restore(
+            addMinutes = addMinutes, addSeconds = addSeconds, isDecimalRestored = true,
+        )
+
+        val expectedTime = (initialTime - delayTime).toComponents { minutes, seconds, nanoseconds ->
+            val newMinutes = minutes.toFloat() + addMinutes
+            val newSeconds = seconds.toFloat() + nanoseconds.toFloat() / 1_000_000_000F + addSeconds
+            newMinutes.roundToInt().minutes + (newSeconds * 1_000F).roundToInt().milliseconds
+        }
+
+        assertEquals(expectedTime, clockViewModel.blackTime.value)
+    }
+
+    @Test
+    fun `savedTimeMinutes coercion with seconds divisible by 60`() = runTest {
+        val vm = ClockViewModel(
+            durationMinutes = 1,
+            incrementSeconds = 0,
+            tickPeriodMillis = tickPeriod.inWholeMilliseconds.toInt(),
+            timeSource = scheduler.timeSource,
+        )
+        vm.start()
+        delay(1.milliseconds)
+        vm.pause()
+        vm.save()
+        vm.restore(addMinutes = -10F)
+
+        assertEquals(1.minutes, vm.whiteTime.value)
+    }
+
+    @Test
+    fun `start-delay-play-undo, blackTime is restored`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.play()
+        clockViewModel.undo()
+
+        assertEquals(initialTime, clockViewModel.blackTime.value)
+    }
+
+    @Test
+    fun `start-delay-play-delay-undo, blackTime is restored to saved value`() = runTest {
+        clockViewModel.start()
+        delay(delayTime)
+        clockViewModel.play()
+        delay(delayTime)
+        clockViewModel.undo()
+
+        assertEquals(initialTime, clockViewModel.blackTime.value)
+    }
 }
